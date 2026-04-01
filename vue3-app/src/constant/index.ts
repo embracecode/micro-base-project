@@ -1,0 +1,1 @@
+export const MAINDATA_KEY = 'mainData'
