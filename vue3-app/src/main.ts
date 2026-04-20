@@ -5,6 +5,8 @@ import router from './router/index'
 import { renderWithQiankun, qiankunWindow } from 'vite-plugin-qiankun/dist/helper'
 import { createPinia } from 'pinia'
 import { MAINDATA_KEY } from './constant'
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
 const pinia = createPinia()
 
 // 扩展Window类型
@@ -23,6 +25,7 @@ function render(props: any) {
   app = createApp(App)
   app.use(router)
   app.use(pinia)
+  app.use(ElementPlus)
   app.mount(props.container ? props.container.querySelector('#vue3') : '#vue3')
   app.provide(MAINDATA_KEY, props)
 }

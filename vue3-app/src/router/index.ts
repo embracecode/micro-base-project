@@ -14,6 +14,11 @@ const router = createRouter({
       path: '/about',
       name: 'About',
       component: About
+    },
+    {
+      path: '/dynamic-form',
+      name: 'DynamicForm',
+      component: () => import('../views/DynamicFormTest.vue')
     }
   ]
 })
