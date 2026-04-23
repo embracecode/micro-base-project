@@ -55,7 +55,7 @@ const globalState = initGlobalState({
 
 // 2. 基座应用可以监听状态变化
 globalState.onGlobalStateChange((state, prev) => {
-  console.log('基座监听到全局状态变化', state, prev);
+  console.log('基座监听到全局状态变化', state, prev, globalState);
 }, true); // true 表示首次立即执行
 const VUE3_APP_ENTRY = import.meta.env.DEV ? '//localhost:3001' : '//localhost:4173'
 const REACT_APP_ENTRY = import.meta.env.DEV ? '//localhost:3003' : '//localhost:4174'

@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import { renderWithQiankun, qiankunWindow } from 'vite-plugin-qiankun/dist/helper'
 import { GlobalContext } from './context/index'
+import '@icon-park/react/styles/index.css';
 
 // 扩展Window类型
 declare global {
@@ -29,10 +30,11 @@ function render(props: any) {
       </GlobalContext.Provider>
     </StrictMode>
   )
+  console.log('React 18子应用渲染完成', props)
   setGlobalState && setGlobalState({
-    text: '来自 React 18 子应用的全局状态',
+    test: '来自 React 18 子应用的全局状态',
     name: 'React 18 子应用'
-  })
+  });
 }
 // qiankun生命周期钩子
 function bootstrap() {
