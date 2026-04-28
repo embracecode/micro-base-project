@@ -1,24 +1,43 @@
 <template>
   <div class="dynamic-form-test">
-    <h1>动态表单测试</h1>
+    <h1>动态表单测试（异步组件）</h1>
     <DynamicForm
       v-model="formData"
       :form-config="formConfig"
       :rules="formRules"
       @submit="handleSubmit"
       @button-click="handleButtonClick"
+      @component-loaded="handleComponentLoaded"
     />
     <div class="form-result" v-if="submittedData">
       <h2>提交结果</h2>
       <pre>{{ submittedData }}</pre>
     </div>
+    <div class="loading-status" v-if="loadingComponents.length > 0">
+      <h3>加载状态</h3>
+      <ul>
+        <li v-for="component in loadingComponents" :key="component">{{ component }} 正在加载...</li>
+      </ul>
+    </div>
+    <div class="loaded-status" v-if="loadedComponents.length > 0">
+      <h3>已加载组件</h3>
+      <ul>
+        <li v-for="component in loadedComponents" :key="component">{{ component }}</li>
+      </ul>
+    </div>
+    <div class="all-loaded" v-if="allComponentsLoaded">
+      <el-alert
+        title="所有组件加载完成"
+        type="success"
+        show-icon
+      />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, h } from 'vue'
+import { reactive, ref, h, defineAsyncComponent, onMounted } from 'vue'
 import DynamicForm from '../components/DynamicForm.vue'
-import HelloWorld from '../components/HelloWorld.vue'
 
 // 导入FormItem类型
 interface FormItem {
@@ -54,10 +73,48 @@ const FunctionalComponent = (props: any, { emit }: any) => {
 FunctionalComponent.props = ['modelValue']
 FunctionalComponent.emits = ['update:modelValue']
 
+// 异步加载HelloWorld组件
+const AsyncHelloWorld = defineAsyncComponent({
+  loader: () => import('../components/HelloWorld.vue'),
+  loadingComponent: {
+    template: '<div class="loading">加载中...</div>'
+  },
+  errorComponent: {
+    template: '<div class="error">加载失败</div>'
+  },
+  delay: 200,
+  timeout: 3000
+})
+
+// 异步加载自定义组件
+const AsyncCustomComponent = defineAsyncComponent({
+  loader: () => import('element-plus').then(m => {
+    const ElInput = m.ElInput
+    return {
+      setup(props: any, { emit }: any) {
+        return () => h('div', {
+          class: 'async-custom-component'
+        }, [
+          h(ElInput, {
+            modelValue: props.modelValue,
+            'onUpdate:modelValue': (value: string) => emit('update:modelValue', value),
+            placeholder: '异步自定义组件'
+          })
+        ])
+      },
+      props: ['modelValue'],
+      emits: ['update:modelValue']
+    }
+  }),
+  loadingComponent: {
+    template: '<div class="loading">加载中...</div>'
+  }
+})
+
 // 表单配置
 const formConfig: FormItem[] = [
   {
-    type: 'ElInput',
+    type: 'input',
     field: 'username',
     key: 'username',
     label: '用户名',
@@ -69,7 +126,7 @@ const formConfig: FormItem[] = [
     span: 12
   },
   {
-    type: 'ElInput',
+    type: 'input',
     field: 'password',
     key: 'password',
     label: '密码',
@@ -82,7 +139,7 @@ const formConfig: FormItem[] = [
     span: 12
   },
   {
-    type: 'ElDatePicker',
+    type: 'datepicker',
     field: 'birthday',
     key: 'birthday',
     label: '出生日期',
@@ -94,7 +151,7 @@ const formConfig: FormItem[] = [
     hidden: false
   },
   {
-    type: 'ElSelect',
+    type: 'select',
     field: 'gender',
     key: 'gender',
     label: '性别',
@@ -108,7 +165,7 @@ const formConfig: FormItem[] = [
     hidden: false
   },
   {
-    type: 'ElCascader',
+    type: 'cascader',
     field: 'address',
     key: 'address',
     label: '地址',
@@ -148,14 +205,14 @@ const formConfig: FormItem[] = [
     hidden: false
   },
   {
-    type: 'ElCheckbox',
+    type: 'checkbox',
     field: 'agree',
     key: 'agree',
     label: '同意协议',
     hidden: false
   },
   {
-    type: 'ElCheckboxGroup',
+    type: 'checkbox-group',
     field: 'hobbies',
     key: 'hobbies',
     label: '爱好',
@@ -167,7 +224,7 @@ const formConfig: FormItem[] = [
     hidden: false
   },
   {
-    type: 'ElRadioGroup',
+    type: 'radio-group',
     field: 'education',
     key: 'education',
     label: '学历',
@@ -179,7 +236,7 @@ const formConfig: FormItem[] = [
     hidden: false
   },
   {
-    type: 'ElButton',
+    type: 'button',
     field: 'reset',
     key: 'reset',
     label: '自定义重置',
@@ -189,7 +246,7 @@ const formConfig: FormItem[] = [
     hidden: false
   },
   {
-    type: 'ElInput',
+    type: 'input',
     field: 'conditionalInput',
     key: 'conditionalInput',
     label: '条件输入',
@@ -199,10 +256,10 @@ const formConfig: FormItem[] = [
     hidden: (formData) => !formData.agree
   },
   {
-    type: HelloWorld,
+    type: AsyncHelloWorld,
     field: 'HelloWorld',
     key: 'HelloWorld',
-    label: '自定义组件',
+    label: '异步自定义组件',
     hidden: false
   },
   {
@@ -210,6 +267,13 @@ const formConfig: FormItem[] = [
     field: 'functionalComponent',
     key: 'functionalComponent',
     label: '函数式组件',
+    hidden: false
+  },
+  {
+    type: AsyncCustomComponent,
+    field: 'asyncCustomComponent',
+    key: 'asyncCustomComponent',
+    label: '异步加载组件',
     hidden: false
   }
 ]
@@ -225,7 +289,9 @@ let formData = reactive<Record<string, any>>({
   hobbies: [],
   education: '',
   conditionalInput: '',
-  functionalComponent: ''
+  functionalComponent: '',
+  HelloWorld: '',
+  asyncCustomComponent: ''
 })
 
 // 表单验证规则
@@ -259,16 +325,51 @@ const formRules = reactive({
   conditionalInput: [
     { required: true, message: '请输入条件输入', trigger: 'blur' }
   ],
-  customComponent: [
-    { required: true, message: '请输入自定义组件', trigger: 'blur' }
-  ],
   functionalComponent: [
     { required: true, message: '请点击函数式组件按钮', trigger: 'blur' }
+  ],
+  asyncCustomComponent: [
+    { required: true, message: '请输入异步组件内容', trigger: 'blur' }
   ]
 })
 
 // 提交结果
 const submittedData = ref<Record<string, any> | null>(null)
+
+// 加载状态
+const loadingComponents = ref<string[]>([])
+const loadedComponents = ref<string[]>([])
+const allComponentsLoaded = ref(false)
+
+// 初始化加载状态
+onMounted(() => {
+  // 标记所有组件为正在加载
+  formConfig.forEach(item => {
+    loadingComponents.value.push(item.key)
+  })
+  
+  // 检查是否有组件
+  if (formConfig.length === 0) {
+    allComponentsLoaded.value = true
+  }
+})
+
+// 处理组件加载完成
+const handleComponentLoaded = (componentKey: string) => {
+  console.log('组件加载完成:', componentKey)
+  const index = loadingComponents.value.indexOf(componentKey)
+  if (index > -1) {
+    loadingComponents.value.splice(index, 1)
+  }
+  if (!loadedComponents.value.includes(componentKey)) {
+    loadedComponents.value.push(componentKey)
+  }
+  
+  // 检查是否所有组件都已加载完成
+  if (loadedComponents.value.length === formConfig.length) {
+    allComponentsLoaded.value = true
+  }
+}
 
 // 处理表单提交
 const handleSubmit = (data: Record<string, any>) => {
@@ -307,6 +408,31 @@ const handleButtonClick = (item: FormItem) => {
   border: 1px solid #e4e7ed;
   border-radius: 4px;
   background-color: #f5f7fa;
+}
+
+.loading-status,
+.loaded-status {
+  margin-top: 20px;
+  padding: 15px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+
+.loading {
+  color: #409eff;
+  text-align: center;
+  padding: 10px;
+}
+
+.error {
+  color: #f56c6c;
+  text-align: center;
+  padding: 10px;
+}
+
+.all-loaded {
+  margin-top: 20px;
 }
 
 pre {

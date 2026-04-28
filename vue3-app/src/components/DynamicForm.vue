@@ -23,6 +23,7 @@
             v-model="formData[item.field]"
             v-bind="item.props"
             v-on="item.events || {}"
+            @vue:mounted="() => handleComponentMounted(item.key)"
           >
             <template v-for="(slot, name) in item.slots" :key="name" #[name]>
               {{ slot }}
@@ -42,45 +43,49 @@
           <!-- 选择器类组件 -->
           <component
             v-else-if="item.type === 'select' || item.type === 'checkbox-group' || item.type === 'radio-group'"
-            :is="componentMap[item.type as ComponentType]"
+            :is="dynamicComponents[item.type]"
             v-model="formData[item.field]"
             v-bind="item.props"
           >
             <!-- 选项 -->
             <template v-if="item.type === 'select'">
-              <el-option
+              <component
                 v-for="option in item.options"
                 :key="option.value"
+                :is="dynamicComponents.option"
                 :label="option.label"
                 :value="option.value"
               />
             </template>
             <template v-else-if="item.type === 'checkbox-group'">
-              <el-checkbox
+              <component
                 v-for="option in item.options"
                 :key="option.value"
+                :is="dynamicComponents.checkbox"
                 :label="option.value"
               >
                 {{ option.label }}
-              </el-checkbox>
+              </component>
             </template>
             <template v-else-if="item.type === 'radio-group'">
-              <el-radio
+              <component
                 v-for="option in item.options"
                 :key="option.value"
+                :is="dynamicComponents.radio"
                 :label="option.value"
               >
                 {{ option.label }}
-              </el-radio>
+              </component>
             </template>
           </component>
 
           <!-- 其他基础组件 -->
           <component
-            v-else-if="componentMap[item.type as ComponentType]"
-            :is="componentMap[item.type as ComponentType]"
+            v-else-if="dynamicComponents[item.type]"
+            :is="dynamicComponents[item.type]"
             v-model="formData[item.field]"
             v-bind="item.props"
+            @vue:mounted="() => handleComponentMounted(item.key)"
           >
             <template v-for="(slot, name) in item.slots" :key="name" #[name]>
               {{ slot }}
@@ -98,8 +103,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, computed } from 'vue'
-import { ElInput, ElButton, ElDatePicker, ElCascader, ElSelect, ElCheckbox, ElCheckboxGroup, ElRadioGroup, ElOption, ElRadio, ElRow, ElCol } from 'element-plus'
+import { ElInput, ElDatePicker, ElCascader, ElSelect, ElCheckbox, ElCheckboxGroup, ElRadioGroup, ElOption, ElRadio } from 'element-plus'
+import { ref, reactive, watch, computed, onMounted, defineAsyncComponent } from 'vue'
+import { ElButton, ElRow, ElCol } from 'element-plus'
 
 // 定义表单配置类型
 interface FormItem {
@@ -118,15 +124,34 @@ interface FormItem {
 // 组件映射
 type ComponentType = 'input' | 'button' | 'datepicker' | 'cascader' | 'select' | 'checkbox' | 'checkbox-group' | 'radio-group'
 
+// 动态导入组件类型
+type DynamicComponents = {
+  [key: string]: any
+}
+
+// 动态导入组件
+const dynamicComponents: DynamicComponents = {
+  input: defineAsyncComponent(() => import('element-plus').then(m => m.ElInput)),
+  datepicker: defineAsyncComponent(() => import('element-plus').then(m => m.ElDatePicker)),
+  cascader: defineAsyncComponent(() => import('element-plus').then(m => m.ElCascader)),
+  select: defineAsyncComponent(() => import('element-plus').then(m => m.ElSelect)),
+  checkbox: defineAsyncComponent(() => import('element-plus').then(m => m.ElCheckbox)),
+  'checkbox-group': defineAsyncComponent(() => import('element-plus').then(m => m.ElCheckboxGroup)),
+  'radio-group': defineAsyncComponent(() => import('element-plus').then(m => m.ElRadioGroup)),
+  option: defineAsyncComponent(() => import('element-plus').then(m => m.ElOption)),
+  radio: defineAsyncComponent(() => import('element-plus').then(m => m.ElRadio))
+}
+
+// 组件映射
 const componentMap: Record<ComponentType, any> = {
-  input: ElInput,
+  input: dynamicComponents.input,
   button: ElButton,
-  datepicker: ElDatePicker,
-  cascader: ElCascader,
-  select: ElSelect,
-  checkbox: ElCheckbox,
-  'checkbox-group': ElCheckboxGroup,
-  'radio-group': ElRadioGroup
+  datepicker: dynamicComponents.datepicker,
+  cascader: dynamicComponents.cascader,
+  select: dynamicComponents.select,
+  checkbox: dynamicComponents.checkbox,
+  'checkbox-group': dynamicComponents['checkbox-group'],
+  'radio-group': dynamicComponents['radio-group']
 }
 
 // 定义组件属性
@@ -137,11 +162,7 @@ const props = defineProps<{
 }>()
 
 // 定义事件
-const emit = defineEmits<{
-  (e: 'update:modelValue', value: Record<string, any>): void
-  (e: 'submit', value: Record<string, any>): void
-  (e: 'button-click', item: FormItem): void
-}>()
+const emit = defineEmits(['update:modelValue', 'submit', 'button-click', 'component-loaded'])
 
 // 表单引用
 const formRef = ref()
@@ -198,6 +219,21 @@ const resetForm = () => {
 const handleButtonClick = (item: FormItem) => {
   emit('button-click', item)
 }
+
+// 处理组件挂载完成
+const handleComponentMounted = (key: string) => {
+  emit('component-loaded', key)
+}
+
+// 组件挂载后发送组件加载完成事件
+onMounted(() => {
+  props.formConfig.forEach(item => {
+    // 对于自定义组件或函数式组件，直接发送加载完成事件
+    if (typeof item.type === 'function' || typeof item.type === 'object') {
+      emit('component-loaded', item.key)
+    }
+  })
+})
 
 </script>
 

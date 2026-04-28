@@ -1,7 +1,7 @@
 <template>
   <div class="dynamic-form-test">
-    <h1>动态表单测试</h1>
-    <DynamicForm
+    <h1>动态表单异步测试</h1>
+    <DynamicFormAsync
       v-model="formData"
       :form-config="formConfig"
       :rules="formRules"
@@ -17,12 +17,12 @@
 
 <script setup lang="ts">
 import { reactive, ref, h } from 'vue'
-import DynamicForm from '../components/DynamicForm.vue'
+import DynamicFormAsync from '../components/DynamicFormAsync.vue'
 import HelloWorld from '../components/HelloWorld.vue'
 
 // 导入FormItem类型
 interface FormItem {
-  type: 'input' | 'button' | 'datepicker' | 'cascader' | 'select' | 'checkbox' | 'checkbox-group' | 'radio-group' | any
+  type: 'ElInput' | 'ElButton' | 'ElDatePicker' | 'ElCascader' | 'ElSelect' | 'ElCheckbox' | 'ElCheckboxGroup' | 'ElRadioGroup' | any
   field: string
   key: string
   label: string
@@ -258,9 +258,6 @@ const formRules = reactive({
   ],
   conditionalInput: [
     { required: true, message: '请输入条件输入', trigger: 'blur' }
-  ],
-  customComponent: [
-    { required: true, message: '请输入自定义组件', trigger: 'blur' }
   ],
   functionalComponent: [
     { required: true, message: '请点击函数式组件按钮', trigger: 'blur' }
